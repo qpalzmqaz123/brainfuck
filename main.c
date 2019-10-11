@@ -34,7 +34,7 @@ void bf_eval(bf_ctx_t *ctx, const char *src) {
                 ++pc;
                 break;
             case '-':
-                if (!nskip && *ctx->cp > 0) {
+                if (!nskip) {
                     --*ctx->cp;
                 }
 
@@ -110,7 +110,7 @@ void dump(const char *buff, size_t size) {
             printf("\n%04d   ", (i / 10) * 10);
         }
 
-        printf(" %03d", buff[i]);
+        printf(" %03d", (uint8_t)buff[i]);
     }
 
     printf("\n");
@@ -150,7 +150,7 @@ int parse_options(options_t *options, int argc, char *argv[]) {
 
         FILE *fp = fopen(filename, "r");
         if (NULL == fp) {
-            fprintf(stderr, "Cannot open file: '%s'", filename);
+            fprintf(stderr, "Cannot open file: '%s'\n", filename);
             return 1;
         }
 
@@ -170,7 +170,9 @@ int parse_options(options_t *options, int argc, char *argv[]) {
 int main(int argc, char *argv[]) {
     options_t options;
 
-    parse_options(&options, argc, argv);
+    if (0 != parse_options(&options, argc, argv)) {
+        return 1;
+    }
 
     bf_ctx_t *ctx = malloc(sizeof(bf_ctx_t));
 
@@ -185,3 +187,4 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
