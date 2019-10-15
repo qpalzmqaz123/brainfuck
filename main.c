@@ -1,108 +1,10 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <libgen.h>
-
-#define CELL_SIZE 2048
-#define LOOP_SIZE 128
+#include "bf.h"
 
 typedef struct options {
     const char *cmd;
     const char *script;
     size_t dump_size;
 } options_t;
-
-typedef struct bf_ctx_t {
-    char *cp; // cell pointer
-    char cell[CELL_SIZE];
-
-    const char **lp; // loop pointer
-    const char *loops[LOOP_SIZE];
-} bf_ctx_t;
-
-void bf_eval(bf_ctx_t *ctx, const char *src) {
-    int nskip = 0; // skip loop counter
-
-    for (const char *pc = src; 0 != *pc;) {
-        switch (*pc) {
-            case '+':
-                if (!nskip) {
-                    ++*ctx->cp;
-                }
-
-                ++pc;
-                break;
-            case '-':
-                if (!nskip) {
-                    --*ctx->cp;
-                }
-
-                ++pc;
-                break;
-            case '.':
-                if (!nskip) {
-                    putchar(*ctx->cp);
-                }
-
-                ++pc;
-                break;
-            case ',':
-                if (!nskip) {
-                    *ctx->cp = getchar();
-                }
-
-                ++pc;
-                break;
-            case '>':
-                if (!nskip) {
-                    ++ctx->cp;
-                }
-
-                ++pc;
-                break;
-            case '<':
-                if (!nskip) {
-                    --ctx->cp;
-                }
-
-                ++pc;
-                break;
-            case '[':
-                if (0 == *ctx->cp) ++nskip;
-
-                *ctx->lp = pc + 1;
-                ++ctx->lp;
-
-                ++pc;
-                break;
-            case ']':
-                if (0 == *ctx->cp) {
-                    if (nskip) {
-                        --nskip;
-                    }
-
-                    --ctx->lp;
-                    ++pc;
-                } else {
-                    pc = *(ctx->lp - 1);
-                }
-
-                break;
-            case 0:
-                return;
-            default:
-                ++pc;
-                break;
-        }
-    }
-}
-
-void bf_init(bf_ctx_t *ctx) {
-    memset(ctx, 0, sizeof(bf_ctx_t));
-    ctx->cp = ctx->cell;
-    ctx->lp = ctx->loops;
-}
 
 void dump(const char *buff, size_t size) {
     for (int i = 0; i < size; i++) {
@@ -127,15 +29,19 @@ void print_help_and_exit(char *argv0) {
 }
 
 int parse_options(options_t *options, int argc, char *argv[]) {
+    int hit = 0;
+
     memset(options, 0, sizeof(options_t));
 
     int c;
     while((c = getopt(argc, argv, "d:c:h")) != -1) {
         switch (c) {
             case 'c':
+                hit = 1;
                 options->cmd = optarg;
                 break;
             case 'd':
+                hit = 1;
                 options->dump_size = atoi(optarg);
                 break;
             case 'h':
@@ -162,7 +68,11 @@ int parse_options(options_t *options, int argc, char *argv[]) {
         fread((void *)options->script, size, 1, fp);
 
         fclose(fp);
+
+        hit = 1;
     }
+
+    if (!hit) print_help_and_exit(argv[0]);
 
     return 0;
 }
@@ -179,7 +89,12 @@ int main(int argc, char *argv[]) {
     bf_init(ctx);
 
     const char *script = options.cmd ? options.cmd : options.script;
+
+#if WITH_JIT
+    bf_compile(ctx, script);
+#else
     bf_eval(ctx, script);
+#endif
 
     if (options.dump_size) dump(ctx->cell, options.dump_size);
 
