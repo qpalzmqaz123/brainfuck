@@ -19,12 +19,23 @@
 #define LOOP_SIZE 128
 #endif
 
+#ifndef JIT_DEFAULT_BC_BUF
+#define JIT_DEFAULT_BC_BUF 1
+#endif
+
 typedef struct bf_ctx_t {
     char *cp; // cell pointer
     char cell[CELL_SIZE];
 
     const char **lp; // loop pointer
     const char *loops[LOOP_SIZE];
+
+#if WITH_JIT
+    uint8_t *bc; // bytecode
+    uint8_t *current_bc;
+    size_t bc_size;
+    size_t bc_buf_size;
+#endif
 } bf_ctx_t;
 
 void bf_init(bf_ctx_t *ctx);
