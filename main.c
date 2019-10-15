@@ -92,6 +92,7 @@ int main(int argc, char *argv[]) {
 
 #if WITH_JIT
     bf_compile(ctx, script);
+    bf_run(ctx);
 #else
     bf_eval(ctx, script);
 #endif

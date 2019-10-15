@@ -8,30 +8,30 @@ typedef struct loop_entry_t {
 } loop_entry_t;
 
 #define PUSH_1_BYTE(p, value) do { \
-    bf_extend_bytecode(ctx, 1); \
+    extend_bytecode(ctx, 1); \
     *(uint8_t *)(p) = (uint8_t)(value); \
     (p) += 1; \
 } while (0)
 
 #define PUSH_2_BYTE(p, value) do { \
-    bf_extend_bytecode(ctx, 2); \
+    extend_bytecode(ctx, 2); \
     *(uint16_t *)(p) = (uint16_t)(value); \
     (p) += 2; \
 } while (0)
 
 #define PUSH_4_BYTE(p, value) do { \
-    bf_extend_bytecode(ctx, 4); \
+    extend_bytecode(ctx, 4); \
     *(uint32_t *)(p) = (uint32_t)(value); \
     (p) += 4; \
 } while (0)
 
 #define PUSH_8_BYTE(p, value) do { \
-    bf_extend_bytecode(ctx, 8); \
+    extend_bytecode(ctx, 8); \
     *(uint64_t *)(p) = (uint64_t)(value); \
     (p) += 8; \
 } while (0)
 
-void bf_extend_bytecode(bf_ctx_t *ctx, size_t size) {
+static void extend_bytecode(bf_ctx_t *ctx, size_t size) {
     ctx->bc_size += size;
     while (ctx->bc_size > ctx->bc_buf_size) {
         uint8_t *old_bc = ctx->bc;
@@ -59,12 +59,21 @@ void bf_extend_bytecode(bf_ctx_t *ctx, size_t size) {
 }
 
 void bf_compile(bf_ctx_t *ctx, const char *src) {
-    loop_entry_t loop_entries[128];
+    loop_entry_t loop_entries[LOOP_SIZE];
     loop_entry_t *lp = loop_entries;
+
+    size_t acc = 0;
 
     for (const char *pc = src; 0 != *pc;) {
         switch (*pc) {
             case '+':
+                {
+                    acc = 0;
+                    for (acc = 0; *pc == '+'; pc++) {
+                        acc++;
+                    }
+                }
+
                 { // rax = &ctx->cp
                     // mov rax, &ctx->cp
                     PUSH_1_BYTE(ctx->current_bc, 0x48);
@@ -83,9 +92,10 @@ void bf_compile(bf_ctx_t *ctx, const char *src) {
                     PUSH_2_BYTE(ctx->current_bc, 0x018b);
                 }
 
-                { // al += 1
-                    // inc al
-                    PUSH_2_BYTE(ctx->current_bc, 0xc0fe);
+                { // al += acc
+                    // add cl, acc
+                    PUSH_1_BYTE(ctx->current_bc, 0x04);
+                    PUSH_1_BYTE(ctx->current_bc, acc);
                 }
 
                 { // *ctx->cp = eax
@@ -93,9 +103,15 @@ void bf_compile(bf_ctx_t *ctx, const char *src) {
                     PUSH_2_BYTE(ctx->current_bc, 0x0189);
                 }
 
-                ++pc;
                 break;
             case '-':
+                {
+                    acc = 0;
+                    for (acc = 0; *pc == '-'; pc++) {
+                        acc++;
+                    }
+                }
+
                 { // rax = &ctx->cp
                     // mov rax, &ctx->cp
                     PUSH_1_BYTE(ctx->current_bc, 0x48);
@@ -114,9 +130,10 @@ void bf_compile(bf_ctx_t *ctx, const char *src) {
                     PUSH_2_BYTE(ctx->current_bc, 0x018b);
                 }
 
-                { // al -= 1
-                    // dec al
-                    PUSH_2_BYTE(ctx->current_bc, 0xc8fe);
+                { // al -= acc
+                    // sub al, acc
+                    PUSH_1_BYTE(ctx->current_bc, 0x2c);
+                    PUSH_1_BYTE(ctx->current_bc, acc);
                 }
 
                 { // *ctx->cp = eax
@@ -124,9 +141,15 @@ void bf_compile(bf_ctx_t *ctx, const char *src) {
                     PUSH_2_BYTE(ctx->current_bc, 0x0189);
                 }
 
-                ++pc;
                 break;
             case '>':
+                {
+                    acc = 0;
+                    for (acc = 0; *pc == '>'; pc++) {
+                        acc++;
+                    }
+                }
+
                 { // rax = &ctx->cp
                     // mov rax, &ctx->cp
                     PUSH_1_BYTE(ctx->current_bc, 0x48);
@@ -134,10 +157,10 @@ void bf_compile(bf_ctx_t *ctx, const char *src) {
                     PUSH_8_BYTE(ctx->current_bc, &ctx->cp);
                 }
 
-                { // mov rcx, 1
+                { // mov rcx, acc
                     PUSH_1_BYTE(ctx->current_bc, 0x48);
                     PUSH_2_BYTE(ctx->current_bc, 0xc1c7);
-                    PUSH_4_BYTE(ctx->current_bc, 0x00000001);
+                    PUSH_4_BYTE(ctx->current_bc, acc);
                 }
 
                 { // add [rax], rcx
@@ -145,9 +168,15 @@ void bf_compile(bf_ctx_t *ctx, const char *src) {
                     PUSH_2_BYTE(ctx->current_bc, 0x0801);
                 }
 
-                ++pc;
                 break;
             case '<':
+                {
+                    acc = 0;
+                    for (acc = 0; *pc == '<'; pc++) {
+                        acc++;
+                    }
+                }
+
                 { // rax = &ctx->cp
                     // mov rax, &ctx->cp
                     PUSH_1_BYTE(ctx->current_bc, 0x48);
@@ -155,10 +184,10 @@ void bf_compile(bf_ctx_t *ctx, const char *src) {
                     PUSH_8_BYTE(ctx->current_bc, &ctx->cp);
                 }
 
-                { // mov rcx, 1
+                { // mov rcx, acc
                     PUSH_1_BYTE(ctx->current_bc, 0x48);
                     PUSH_2_BYTE(ctx->current_bc, 0xc1c7);
-                    PUSH_4_BYTE(ctx->current_bc, 0x00000001);
+                    PUSH_4_BYTE(ctx->current_bc, acc);
                 }
 
                 { // sub [rax], rcx
@@ -166,7 +195,6 @@ void bf_compile(bf_ctx_t *ctx, const char *src) {
                     PUSH_2_BYTE(ctx->current_bc, 0x0829);
                 }
 
-                ++pc;
                 break;
             case '[':
                 lp->start_offset = ctx->current_bc - ctx->bc;
@@ -231,7 +259,8 @@ void bf_compile(bf_ctx_t *ctx, const char *src) {
                 }
 
                 // set end_addr
-                *(uint32_t *)(ctx->bc + lp->end_addr_value_offset) = (uint32_t)(ctx->current_bc - ctx->bc - lp->start_offset - (1 + 1 + 8 + 1 + 2 + 2 + 2 + 2 + 4));
+                *(uint32_t *)(ctx->bc + lp->end_addr_value_offset) =
+                    (uint32_t)(ctx->current_bc - ctx->bc - lp->start_offset - (1 + 1 + 8 + 1 + 2 + 2 + 2 + 2 + 4));
 
                 ++pc;
                 break;
@@ -273,7 +302,9 @@ void bf_compile(bf_ctx_t *ctx, const char *src) {
  
     // ret
     PUSH_1_BYTE(ctx->current_bc, 0xc3);
+}
 
+void bf_run(bf_ctx_t *ctx) {
     void (*func)(void) = (void (*)(void))ctx->bc;
 
     (void)func;

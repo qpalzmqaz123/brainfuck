@@ -5,8 +5,16 @@ A brainfuck c implementation
 ## Build
 
 ```bash
-$ gcc -o bf main.c
+$ make
 ```
+
+## Build (Enable JIT, recommend)
+
+```bash
+$ make jit
+```
+
+> Currently only supports x64
 
 ## Usage
 

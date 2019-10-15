@@ -20,7 +20,7 @@
 #endif
 
 #ifndef JIT_DEFAULT_BC_BUF
-#define JIT_DEFAULT_BC_BUF 1
+#define JIT_DEFAULT_BC_BUF 1024
 #endif
 
 typedef struct bf_ctx_t {
@@ -44,6 +44,8 @@ void bf_eval(bf_ctx_t *ctx, const char *src);
 
 #if WITH_JIT
 void bf_compile(bf_ctx_t *ctx, const char *src);
+
+void bf_run(bf_ctx_t *ctx);
 #endif
 
 #endif
